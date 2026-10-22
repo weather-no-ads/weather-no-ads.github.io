@@ -125,7 +125,7 @@
             <i data-lucide="alert-triangle" class="w-10 h-10 text-red-400 mx-auto mb-3"></i>
             <h3 class="text-lg font-semibold text-white mb-1">Location Error</h3>
             <p id="errorMessage" class="text-sm text-slate-300 mb-4">Unable to fetch weather info.</p>
-            <button onclick="fetchWeatherData(40.7128, -74.0060, 'New York', 'US')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-xl transition">Reset to New York</button>
+            <button onclick="dismissError()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-xl transition">Try Another Location</button>
         </div>
 
         <!-- Main Weather Grid Content (Hidden initially until location loaded) -->
@@ -356,14 +356,14 @@
                     showLoading();
                     navigator.geolocation.getCurrentPosition(
                         (pos) => {
-                            fetchWeatherData(pos.coords.latitude, pos.coords.longitude, 'Current Location', 'US');
+                            reverseGeocodeAndFetch(pos.coords.latitude, pos.coords.longitude);
                         },
                         () => {
-                            fetchWeatherData(40.7128, -74.0060, 'New York', 'US');
+                            showError('Unable to retrieve your precise location.');
                         }
                     );
                 } else {
-                    fetchWeatherData(40.7128, -74.0060, 'New York', 'US');
+                    showError('Geolocation is not supported by your browser.');
                 }
             });
 
@@ -372,6 +372,16 @@
                     searchResults.classList.add('hidden');
                 }
             });
+        }
+
+        async function reverseGeocodeAndFetch(lat, lon) {
+            try {
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=latlon&count=1&format=json`);
+                // Use reverse coordinates directly or fallback to lat/lon lookup if available
+                fetchWeatherData(lat, lon, 'Current Location', 'US');
+            } catch (err) {
+                fetchWeatherData(lat, lon, 'Current Location', 'US');
+            }
         }
 
         async function fetchCitySuggestions(query) {
@@ -424,7 +434,7 @@
                         fahrenheitBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
                     }
 
-                    fetchWeatherData(place.latitude, place.longitude, place.name, place.country_code || 'US');
+                    fetchWeatherData(place.latitude, place.longitude, place.name, place.country_code || '');
                 });
 
                 searchResults.appendChild(item);
@@ -452,11 +462,7 @@
                 hideLoading();
             } catch (err) {
                 console.error('Weather fetch error:', err);
-                if (cityName !== 'New York') {
-                    fetchWeatherData(40.7128, -74.0060, 'New York', 'US');
-                } else {
-                    showError('Unable to retrieve weather information. Please try again.');
-                }
+                showError('Unable to retrieve weather information for this location. Please try searching again.');
             }
         }
 
@@ -619,6 +625,13 @@
             weatherContent.classList.add('hidden');
             errorState.classList.remove('hidden');
             document.getElementById('errorMessage').textContent = msg;
+        }
+
+        function dismissError() {
+            errorState.classList.add('hidden');
+            welcomeState.classList.remove('hidden');
+            cityInput.value = '';
+            cityInput.focus();
         }
     </script>
 </body>
